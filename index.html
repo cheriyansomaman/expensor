@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Expense Tracker</title>
+    <title>Expensor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
@@ -21,18 +21,32 @@
 <body class="bg-gray-100 p-4">
   <div class="max-w-2xl mx-auto bg-white p-6 rounded shadow text-center">
 
-    <h1 class="text-2xl font-bold mb-4">Expense Tracker</h1>
+    <h1 class="text-2xl font-bold mb-4">Expensor</h1>
 
     <form id="expense-form" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
       <input type="text" id="category" placeholder="Category" class="border p-2 rounded" required />
       <input type="number" step="0.01" id="amount" placeholder="Amount" class="border p-2 rounded" required />
-      <input type="text" id="date" placeholder="YYYY-MM-DD" class="border p-2 rounded w-full" />
+      <div class="relative">
+        <input
+                type="date"
+                id="date"
+                name="date"
+                class="peer border p-2 rounded w-full placeholder-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Select date"
+        />
+        <label
+                for="date"
+                class="absolute left-2 -top-2 text-xs text-gray-600 bg-white px-1 peer-placeholder-shown:top-2 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 transition-all"
+        >
+          Date (optional)
+        </label>
+      </div>
       <input type="text" id="note" placeholder="Note (optional)" class="border p-2 rounded" />
       <button type="submit" class="col-span-full bg-blue-500 text-white p-2 rounded">Add Expense</button>
     </form>
 
     <h2 class="text-xl font-semibold mb-2 flex items-center justify-between">
-      <span>Expenses</span>
+      <span>Expensor</span>
       <button id="refresh-btn" class="bg-gray-500 text-white p-2 rounded flex items-center justify-center">
         <i class="fas fa-sync-alt"></i>
       </button>
