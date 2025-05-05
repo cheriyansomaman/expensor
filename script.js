@@ -47,6 +47,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     // Load data if needed
     if (pageId === 'expense-history-page' || pageId === 'monthly-summary-page') {
       loadExpenses();
+      loadLastFiveMonthExpenses();
     }
   });
 });
@@ -104,8 +105,6 @@ async function loadExpenses() {
     monthYear.innerText = `${thisMonth}`;
     tbody.innerHTML = ""; // Clear existing table rows
 
-    const monthlyTotal = {};
-
     expenses.forEach(exp => {
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -123,12 +122,25 @@ async function loadExpenses() {
             </td>
         `;
         tbody.appendChild(row);
+    });
 
+    attachRowHandlers(); // Attach edit/delete handlers
+}
+
+async function loadLastFiveMonthExpenses() {
+    const today = new Date();
+    const lastFiveMonthDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+    const q = query(expenseCol, where("date", ">=", `${lastFiveMonthDate.toISOString().slice(0, 7)}-01`), where("date", "<=", `${today.toISOString().slice(0, 10)}`), orderBy("date", "desc"));
+    const snapshot = await getDocs(q);
+    const expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    const monthlyTotal = {};
+
+    expenses.forEach(exp => {
         const month = exp.date.slice(0, 7);
         monthlyTotal[month] = (monthlyTotal[month] || 0) + exp.amount;
     });
 
-    attachRowHandlers(); // Attach edit/delete handlers
     renderChart(monthlyTotal); // Update chart with new data
 }
 
