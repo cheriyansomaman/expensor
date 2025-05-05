@@ -1,3 +1,4 @@
+
 // Firebase config (replace with yours)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
 import {
@@ -19,6 +20,35 @@ const db = getFirestore(app);
 const expenseCol = collection(db, "item");
 
 let editingId = null;
+
+// Navigation logic
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    // Remove active class from all items
+    document.querySelectorAll('.nav-item').forEach(navItem => {
+      navItem.classList.remove('active');
+    });
+    
+    // Add active class to clicked item
+    this.classList.add('active');
+    
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(page => {
+      page.style.display = 'none';
+    });
+    
+    // Show selected page
+    const pageId = this.getAttribute('data-page');
+    document.getElementById(pageId).style.display = 'block';
+    
+    // Load data if needed
+    if (pageId === 'expense-history-page' || pageId === 'monthly-summary-page') {
+      loadExpenses();
+    }
+  });
+});
 
 // Handle Form Submit
 document.getElementById("expense-form").addEventListener("submit", async (e) => {
@@ -42,12 +72,16 @@ document.getElementById("expense-form").addEventListener("submit", async (e) => 
     // Ensure all required fields are filled
     if (!amount || !category || !date) return alert("Fill all required fields");
 
+    const submitBtn = document.querySelector("#expense-form button[type='submit']");
+    
     // If we are in edit mode
     if (editingId) {
         const docRef = doc(db, "item", editingId);
         await updateDoc(docRef, { amount, category, date, note });
         editingId = null; // Reset the editingId after update
-        e.target.querySelector("button[type='submit']").textContent = "Add Expense"; // Reset button text to "Add Expense"
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Expense';
+        submitBtn.classList.remove("btn-secondary");
+        submitBtn.classList.add("btn-primary");
     } else {
         // If we are adding a new expense
         await addDoc(expenseCol, { amount, category, date, note });
@@ -69,27 +103,22 @@ async function loadExpenses() {
     const monthlyTotal = {};
 
     expenses.forEach(exp => {
-        const row = `
-        <tr>
-            <td class="p-2">${exp.date}</td>
-            <td class="p-2">£${exp.amount.toFixed(2)}</td>
-            <td class="p-2">${exp.category}</td>
-            <td class="p-2">${exp.note || ""}</td>
-            <td class="p-2">
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <!-- Edit Button -->
-                    <button class="edit-btn bg-yellow-400 p-2 rounded text-xs sm:text-sm flex items-center justify-center" data-id="${exp.id}">
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${exp.date}</td>
+            <td>£${exp.amount.toFixed(2)}</td>
+            <td>${exp.category}</td>
+            <td>${exp.note || "-"}</td>
+            <td class="action-cell">
+                <button class="edit-btn btn btn-warning btn-icon" data-id="${exp.id}" title="Edit">
                     <i class="fas fa-edit"></i>
-                    </button>
-                    
-                    <!-- Delete Button -->
-                    <button class="delete-btn bg-red-500 text-white p-2 rounded text-xs sm:text-sm flex items-center justify-center" data-id="${exp.id}">
+                </button>
+                <button class="delete-btn btn btn-error btn-icon" data-id="${exp.id}" title="Delete">
                     <i class="fas fa-trash"></i>
-                    </button>
-                </div>
+                </button>
             </td>
-        </tr>`;
-        tbody.innerHTML += row;
+        `;
+        tbody.appendChild(row);
 
         const month = exp.date.slice(0, 7);
         monthlyTotal[month] = (monthlyTotal[month] || 0) + exp.amount;
@@ -110,9 +139,25 @@ function attachRowHandlers() {
                 // Fill the form with data from the clicked expense
                 document.getElementById("amount").value = docData.amount;
                 document.getElementById("category").value = docData.category;
-                document.getElementById("note").value = docData.note;
+                document.getElementById("note").value = docData.note || "";
+                document.getElementById("date").value = docData.date;
+                
                 editingId = id; // Store the id for editing
-                document.querySelector("button[type='submit']").textContent = "Update Expense"; // Change button text to "Update Expense"
+                
+                const submitBtn = document.querySelector("#expense-form button[type='submit']");
+                submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Expense';
+                submitBtn.classList.remove("btn-primary");
+                submitBtn.classList.add("btn-secondary");
+                
+                // Switch to add expense page
+                document.querySelectorAll('.nav-item').forEach(navItem => {
+                  navItem.classList.remove('active');
+                });
+                document.querySelector('.nav-item[data-page="add-expense-page"]').classList.add('active');
+                document.querySelectorAll('.page').forEach(page => {
+                  page.style.display = 'none';
+                });
+                document.getElementById('add-expense-page').style.display = 'block';
             }
         })
     );
@@ -120,7 +165,7 @@ function attachRowHandlers() {
     document.querySelectorAll(".delete-btn").forEach(btn =>
         btn.addEventListener("click", async () => {
             const id = btn.dataset.id;
-            if (confirm("Delete this expense?")) {
+            if (confirm("Are you sure you want to delete this expense?")) {
                 await deleteDoc(doc(db, "item", id));
                 loadExpenses(); // Reload expenses after delete
             }
@@ -149,26 +194,43 @@ function renderChart(data) {
             datasets: [{
                 label: "Monthly Expenses",
                 data: values,
-                backgroundColor: backgroundColors // Apply dynamic color array
+                backgroundColor: backgroundColors,
+                borderColor: backgroundColors.map(color => color.replace('60%)', '40%)')),
+                borderWidth: 1
             }]
         },
         options: {
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `£${context.raw.toFixed(2)}`;
+                        }
+                    }
+                },
                 datalabels: {
-                    // Display the total amount below each label
-                    anchor: 'start', // Position the label below the bar
-                    align: 'top', // Align the label to the top of the bar
-                    formatter: (value, context) => `$${value.toFixed(2)}`,
+                    anchor: 'end',
+                    align: 'top',
+                    formatter: (value) => `£${value.toFixed(2)}`,
                     font: {
                         weight: 'bold'
                     },
-                    // Adjust the label positioning to be below the bars
-                    offset: 5,
+                    color: '#333'
                 }
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '£' + value;
+                        }
+                    }
                 }
             }
         },
@@ -178,7 +240,11 @@ function renderChart(data) {
 
 // Refresh button logic
 document.getElementById("refresh-btn").addEventListener("click", async () => {
-    loadExpenses();
+    const btn = document.getElementById("refresh-btn");
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    await loadExpenses();
+    btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
 });
 
-loadExpenses();
+// Initial load (show add expense page by default)
+document.getElementById('add-expense-page').style.display = 'block';
