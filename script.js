@@ -1,4 +1,3 @@
-
 // Firebase config (replace with yours)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
 import {
