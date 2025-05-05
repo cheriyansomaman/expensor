@@ -9,7 +9,8 @@ import {
     deleteDoc,
     doc,
     query,
-    orderBy
+    orderBy,
+    where
 } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 const firebaseConfig = window.FIREBASE_CONFIG;
@@ -19,6 +20,7 @@ const db = getFirestore(app);
 const expenseCol = collection(db, "item");
 
 let editingId = null;
+let thisMonth = new Date().toISOString().slice(0, 7); // Get current month in YYYY-MM format
 
 // Navigation logic
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -92,11 +94,14 @@ document.getElementById("expense-form").addEventListener("submit", async (e) => 
 
 // Load and Display
 async function loadExpenses() {
-    const q = query(expenseCol, orderBy("date", "desc"));
+    
+    const q = query(expenseCol, where("date", ">=", `${thisMonth}-01`), where("date", "<", `${thisMonth}-31`), orderBy("date", "desc"));
     const snapshot = await getDocs(q);
     const expenses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const tbody = document.getElementById("expense-table-body");
+    const monthYear = document.getElementById("month-year");
+    monthYear.innerText = `${thisMonth}`;
     tbody.innerHTML = ""; // Clear existing table rows
 
     const monthlyTotal = {};
@@ -244,6 +249,21 @@ document.getElementById("refresh-btn").addEventListener("click", async () => {
     await loadExpenses();
     btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
 });
+document.getElementById("previous-btn").addEventListener("click", async () => {
+    thisMonth = shiftMonth(thisMonth, -1);
+    await loadExpenses();
+});
+document.getElementById("next-btn").addEventListener("click", async () => {
+    thisMonth = shiftMonth(thisMonth, 1);
+    await loadExpenses();
+});
+
+function shiftMonth(ym, offset) {
+    const [year, month] = ym.split("-").map(Number);
+    const newDate = new Date(year, month + offset); // safe month shifting
+    const newYM = newDate.toISOString().slice(0, 7);
+    return newYM;
+}
 
 // Initial load (show add expense page by default)
 document.getElementById('add-expense-page').style.display = 'block';
